@@ -4,4 +4,9 @@ version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["ipykernel>=7.1.0", "pandas>=2.3.3", "requests>=2.32.5"]
+dependencies = [
+    "ipykernel>=7.1.0",
+    "pandas>=2.3.3",
+    "pyarrow>=22.0.0",
+    "requests>=2.32.5",
+]
