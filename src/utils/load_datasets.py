@@ -75,7 +75,7 @@ def load_datasets(datasets_path_str: str):
   df = pd.DataFrame(df_dict)
 
   df.drop_duplicates(subset=['Filename'], inplace=True)
-  df[df['Label'] == "TLight"] = "Traffic Light"
+  df.loc[df['Label'] == "TLight", 'Label'] = "Traffic Light"
   df['Label'] = df['Label'].str.title()
 
   df.to_parquet(path / "datasets.parquet", index=False)

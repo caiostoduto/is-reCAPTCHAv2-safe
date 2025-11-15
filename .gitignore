@@ -1,5 +1,10 @@
 # datasets
 datasets
+yolo_dataset*/
+src/is_recaptchav2_safe_kfold/
+
+# Models
+*.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
