@@ -1,6 +1,6 @@
 # datasets
 datasets
-yolo_dataset*/
+dataset_*/
 src/is_recaptchav2_safe_kfold/
 
 # Models
