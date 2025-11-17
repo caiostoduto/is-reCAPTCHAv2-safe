@@ -10,5 +10,6 @@ dependencies = [
     "pyarrow>=22.0.0",
     "requests>=2.32.5",
     "scikit-learn>=1.7.2",
+    "timm>=1.0.22",
     "ultralytics>=8.3.228",
 ]
