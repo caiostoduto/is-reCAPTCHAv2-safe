@@ -1,7 +1,7 @@
 # datasets
 datasets
 dataset_*/
-src/is_recaptchav2_safe_kfold/
+src/is_recaptchav2_safe*/
 
 # Models
 *.pt
