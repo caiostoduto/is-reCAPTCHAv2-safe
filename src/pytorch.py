@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+import h5py
+from tqdm import tqdm
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
@@ -14,7 +16,79 @@ import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+
+def convert_imgfolder_to_hdf5(data_dir, output_path, img_size=128):
+    print(f"Loading images from: {data_dir}")
     
+    # Transform: Resize → ToTensor (produces float32 [C, H, W])
+    transform = transforms.Compose([
+        transforms.Resize((img_size, img_size)),
+        transforms.ToTensor()
+    ])
+    
+    # Load dataset (automatically gets class labels)
+    dataset = torchvision.datasets.ImageFolder(root=data_dir, transform=transform)
+    
+    print(f"Found {len(dataset)} images across {len(dataset.classes)} classes")
+    
+    # Create HDF5 file
+    with h5py.File(output_path, "w") as f:
+        # Images: [N, C, H, W] as float32
+        img_dset = f.create_dataset(
+            "images",
+            shape=(len(dataset), 3, img_size, img_size),
+            dtype="float32",
+            chunks=(1, 3, img_size, img_size),  # One image per chunk
+            compression="lzf",  # Fast, good for float data
+        )
+        
+        # Labels: [N] as int64
+        label_dset = f.create_dataset(
+            "labels",
+            shape=(len(dataset),),
+            dtype="int64",
+        )
+        
+        # Store class names as metadata (optional but useful)
+        f.attrs["classes"] = dataset.classes
+        
+        # Fill datasets
+        print("Converting...")
+        for i, (img_tensor, label) in tqdm(enumerate(dataset), total=len(dataset)):
+            # img_tensor is already float32 [C, H, W] from ToTensor
+            img_dset[i] = img_tensor.numpy()
+            label_dset[i] = label
+    
+    print(f"Created {output_path} with {len(dataset)} images")
+
+
+class HDF5Dataset(Dataset):
+    def __init__(self, h5_path, transform=None):
+        self.h5_path = h5_path
+        self.transform = transform
+        with h5py.File(self.h5_path, "r") as f:
+            self._len = len(f["images"])
+        self._h5_file = None
+
+    def _open_file(self):
+        if not hasattr(self, "_images"):
+            self._h5_file = h5py.File(self.h5_path, "r", swmr=True)
+            self._images = self._h5_file["images"]
+            self._labels = self._h5_file["labels"]
+
+    def __getitem__(self, idx):
+        self._open_file()
+        img = torch.from_numpy(self._images[idx])  # Already float32 [C, H, W]
+        label = int(self._labels[idx])
+        if self.transform:
+            img = self.transform(img)
+        return img, label
+
+    def __len__(self): return self._len
+    def __del__(self):
+        if hasattr(self, "_h5_file") and self._h5_file:
+            self._h5_file.close()
+
 class SimpleCNN(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
@@ -38,21 +112,27 @@ def main():
     print(df['Label'].value_counts())
 
     transform = transforms.Compose([
-        transforms.Resize((128, 128)),
-        transforms.ToTensor(),
+        transforms.RandomHorizontalFlip(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    batch_size = 4
+
+    batch_size = 32
     num_workers = 4
+    epochs = 10
 
     dataset_path = Path("../dataset_copy")
     save_dir = Path("./is_recaptchav2_safe/pytorch")
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    train_set = torchvision.datasets.ImageFolder(dataset_path / "train", transform=transform)
-    test_set = torchvision.datasets.ImageFolder(dataset_path / "val", transform=transform)
+    create_hdf5 = False
+    if create_hdf5:
+        convert_imgfolder_to_hdf5(dataset_path / "train", "../datasets/train.h5")
+        convert_imgfolder_to_hdf5(dataset_path / "val", "../datasets/val.h5")
 
+
+    train_set = HDF5Dataset("../datasets/train.h5", transform=transform)
+    test_set = HDF5Dataset("../datasets/val.h5", transform=transform)
 
     train_loader = DataLoader(
         train_set,
@@ -85,46 +165,49 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
+
     # Training loop
     print("Beggining training")
-    for epoch in range(2):
-        running_loss = 0.0
-        for i, data in enumerate(train_loader, 0):
-            # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data[0].to(device), data[1].to(device)
+    best_acc = 0
+    with open(save_dir / "results.csv", 'w') as f:
+        f.write("epoch,loss\n")
+        print("epoch,loss")
 
-            # zero the parameter gradients
-            optimizer.zero_grad()
+        for epoch in range(epochs):
+            running_loss = 0.0
+            for data in train_loader:
+                # get the inputs; data is a list of [inputs, labels]
+                inputs, labels = data[0].to(device), data[1].to(device)
 
-            # forward + backward + optimize
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+                # zero the parameter gradients
+                optimizer.zero_grad()
 
-            # print statistics
-            running_loss += loss.item()
-            if i % 500 == 499:    # print every 500 mini-batches
-                print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
-                running_loss = 0.0
+                # forward + backward + optimize
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+
+                # print statistics
+                running_loss += loss.item()
+
+            print(f"{epoch+1},{(running_loss / len(train_loader)):.4f}")
+            f.write(f"{epoch},{running_loss / len(train_loader)}\n")
     
-    PATH = './is_recaptchav2_safe/pytorch/cnn.pth'
-    torch.save(model.state_dict(), PATH)
+    with open(save_dir / "results.txt", 'w') as f:
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for data in test_loader:
+                images, labels = data[0].to(device), data[1].to(device)
+                outputs = model(images)
+                _, predicted = torch.max(outputs, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
 
-    correct = 0
-    total = 0
-    # since we're not training, we don't need to calculate the gradients for our outputs
-    with torch.no_grad():
-        for data in test_loader:
-            images, labels = data[0].to(device), data[1].to(device)
-            # calculate outputs by running images through the network
-            outputs = model(images)
-            # the class with the highest energy is what we choose as prediction
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    print(f'Accuracy of the network on the {total} test images: {100 * correct // total} %')
+        accuracy = correct / total
+        f.write(f"Final accuracy: {(100*accuracy):.2f} %\n")
+        print(f"Final accuracy: {(100*accuracy):.2f} %")
 
 if __name__ == "__main__":
     main()
