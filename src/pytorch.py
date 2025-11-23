@@ -17,6 +17,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from sklearn.metrics import confusion_matrix
+
+
 def convert_imgfolder_to_hdf5(data_dir, output_path, img_size=128):
     print(f"Loading images from: {data_dir}")
     
@@ -119,7 +122,7 @@ def main():
 
     batch_size = 32
     num_workers = 4
-    epochs = 10
+    epochs = 100
 
     dataset_path = Path("../dataset_copy")
     save_dir = Path("./is_recaptchav2_safe/pytorch")
@@ -168,14 +171,13 @@ def main():
 
     # Training loop
     print("Beggining training")
-    best_acc = 0
     with open(save_dir / "results.csv", 'w') as f:
         f.write("epoch,loss\n")
         print("epoch,loss")
 
         for epoch in range(epochs):
             running_loss = 0.0
-            for data in train_loader:
+            for data in tqdm(train_loader, total=len(train_loader)):
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data[0].to(device), data[1].to(device)
 
@@ -191,23 +193,77 @@ def main():
                 # print statistics
                 running_loss += loss.item()
 
-            print(f"{epoch+1},{(running_loss / len(train_loader)):.4f}")
+            print(f"{epoch+1}/{epochs},{(running_loss / len(train_loader)):.4f}")
             f.write(f"{epoch},{running_loss / len(train_loader)}\n")
     
     with open(save_dir / "results.txt", 'w') as f:
+        all_preds = []
+        all_labels = []
+        
         correct = 0
         total = 0
         with torch.no_grad():
-            for data in test_loader:
+            for data in tqdm(test_loader, total=len(test_loader)):
                 images, labels = data[0].to(device), data[1].to(device)
                 outputs = model(images)
                 _, predicted = torch.max(outputs, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
-
+                
+                all_preds.extend(predicted.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+        
         accuracy = correct / total
         f.write(f"Final accuracy: {(100*accuracy):.2f} %\n")
         print(f"Final accuracy: {(100*accuracy):.2f} %")
+        
+        cm = confusion_matrix(all_labels, all_preds)
+
+    # Plot Confusion Matrix
+    cm = cm.T
+    plt.figure(figsize=(10, 8))
+    plt.imshow(cm, cmap="Blues")
+    plt.title("Normalized Confusion Matrix")
+    plt.colorbar()
+
+    plt.xticks(np.arange(len(classes)), classes, rotation=90)
+    plt.yticks(np.arange(len(classes)), classes)
+
+    plt.xlabel("True")
+    plt.ylabel("Predicted")
+
+    thresh = cm.max() / 2
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            if cm[i, j] > 0:
+                plt.text(j, i, f"{cm[i, j]}",
+                        ha="center", va="center",
+                        color="white" if cm[i, j] > thresh else "black")
+
+    plt.savefig(os.path.join(save_dir, 'confusion_matrix.png'), dpi=300, bbox_inches='tight')
+
+    cm_norm = cm.astype("float") / cm.sum(axis=0, keepdims=True)
+
+    plt.figure(figsize=(10, 8))
+    plt.imshow(cm_norm, cmap="Blues")
+    plt.title("Normalized Confusion Matrix")
+    plt.colorbar()
+
+    plt.xticks(np.arange(len(classes)), classes, rotation=90)
+    plt.yticks(np.arange(len(classes)), classes)
+
+    plt.xlabel("True")
+    plt.ylabel("Predicted")
+
+    thresh = cm_norm.max() / 2
+    for i in range(cm_norm.shape[0]):
+        for j in range(cm_norm.shape[1]):
+            if cm_norm[i, j] > 0.009:
+                plt.text(j, i, f"{cm_norm[i, j]:.2f}",
+                        ha="center", va="center",
+                        color="white" if cm_norm[i, j] > thresh else "black")
+                
+    plt.savefig(os.path.join(save_dir, 'confusion_matrix_normalized.png'), dpi=300, bbox_inches='tight')
 
 if __name__ == "__main__":
     main()
