@@ -30,8 +30,13 @@ src/
 Requer Python 3.13.
 
 ```bash
-
 pip install -e .
+```
+
+ou
+
+```bash
+uv sync
 
 ```
 
