@@ -29,6 +29,8 @@ src/
 
 Requer Python 3.13.
 
+Requer CUDA e Pytorch devidamente instalados: https://pytorch.org/get-started/locally/
+
 ```bash
 pip install -e .
 ```
@@ -37,7 +39,6 @@ ou
 
 ```bash
 uv sync
-
 ```
 
 ## 3. Treinamento (CNN Simples)
