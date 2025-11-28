@@ -49,6 +49,8 @@ pip install -e .
 
 ## 3. Treinamento (CNN Simples)
 
+Antes de rodar o script, garanta que o diretório ./datasets/ esteja configurado corretamente. Se ele ainda não existir ou estiver vazio, execute as seis primeiras células do notebook yolo.ipynb para que a estrutura e os arquivos do dataset sejam criados.
+
 Script: `src/pytorch.py`.
 
 Rodar:
