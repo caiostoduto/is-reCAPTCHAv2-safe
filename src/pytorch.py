@@ -128,10 +128,15 @@ def main():
     save_dir = Path("./is_recaptchav2_safe/pytorch")
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    create_hdf5 = False
-    if create_hdf5:
-        convert_imgfolder_to_hdf5(dataset_path / "train", "../datasets/train.h5")
-        convert_imgfolder_to_hdf5(dataset_path / "val", "../datasets/val.h5")
+    train_h5 = "../datasets/train.h5"
+    val_h5 = "../datasets/val.h5"
+
+    if not (os.path.exists(train_h5) and os.path.exists(val_h5)):
+        print("HDF5 files not found. Creating them...")
+        convert_imgfolder_to_hdf5(dataset_path / "train", train_h5)
+        convert_imgfolder_to_hdf5(dataset_path / "val", val_h5)
+    else:
+        print("HDF5 files found. Skipping creation.")
 
 
     train_set = HDF5Dataset("../datasets/train.h5", transform=transform)
