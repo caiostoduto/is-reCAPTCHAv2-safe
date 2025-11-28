@@ -20,7 +20,7 @@ src/
 	utils/
 		dataset_download.py  Download dos datasets
 		load_datasets.py     Consolidação, normalização de rótulos, deduplicação
-	pytorch.py             Pipeline de treino/eval + saída de métricas
+	pytorch.py             Rede neural convolucional simples (CNN)
 	timm.ipynb             Notebook para arquiteturas timm
 	yolo.ipynb             Notebook para testes com YOLO (ultralytics)
 ```
@@ -31,15 +31,21 @@ Requer Python 3.13.
 
 Requer CUDA e Pytorch devidamente instalados: https://pytorch.org/get-started/locally/
 
-```bash
-pip install -e .
-```
-
-ou
+### Instalar as dependencias locais e configurar ambiente, escolha uma das duas opções abaixo:
 
 ```bash
 uv sync
 ```
+
+(**opção recomendada**, porém precisa baixar o gerenciador de pacotes [uv](https://docs.astral.sh/uv/getting-started/installation/) )
+
+ou
+
+```bash
+pip install -e .
+```
+
+(pode ser necessário configurar manualmente o ambiente virtual e a versão correta do python)
 
 ## 3. Treinamento (CNN Simples)
 
