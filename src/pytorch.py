@@ -196,6 +196,8 @@ def main():
             print(f"{epoch+1}/{epochs},{(running_loss / len(train_loader)):.4f}")
             f.write(f"{epoch},{running_loss / len(train_loader)}\n")
     
+    torch.save(model.state_dict(), save_dir / "cnn.pth")
+
     with open(save_dir / "results.txt", 'w') as f:
         all_preds = []
         all_labels = []
