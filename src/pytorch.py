@@ -19,7 +19,7 @@ import torch.optim as optim
 
 from sklearn.metrics import confusion_matrix
 
-
+# img_size pode dar melhor desempenho se for menor, tipo 64 ou 32
 def convert_imgfolder_to_hdf5(data_dir, output_path, img_size=128):
     print(f"Loading images from: {data_dir}")
     
@@ -92,6 +92,8 @@ class HDF5Dataset(Dataset):
         if hasattr(self, "_h5_file") and self._h5_file:
             self._h5_file.close()
 
+# testar nn.ReLU() vs nn.LeakyReLU(0.1)
+
 class SimpleCNN(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
@@ -145,6 +147,24 @@ def main():
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
+    #testar as transformations em 3 fases (combinadas, pode melhorar a robustez na detecao de padroes mais variados):
+    # Fase Básica:
+    # RandomHorizontalFlip(p=0.3)
+    # RandomRotation(degrees=5)
+    # Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
+
+    # Fase Intermediária:
+    # RandomRotation(degrees=10)
+    # ColorJitter(brightness=0.2, contrast=0.2)
+    # RandomAffine(degrees=10, shear=10)
+    # Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
+
+    # Fase Avançada (ideal para reCAPTCHA):
+    # RandomAffine(degrees=10, shear=10)
+    # ColorJitter(brightness=0.3, contrast=0.3)
+    # RandomApply([GaussianBlur(kernel_size=3)], p=0.3)
+    # Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
+
 
     batch_size = 32
     num_workers = 4
@@ -197,7 +217,35 @@ def main():
     # Loss & optimiser
     print("Setting up loss & optimiser")
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+
+    # combinacoes a se testar (SGD):
+
+    # lr=0.01, momentum=0.9
+    #
+    #lr=0.005, momentum=0.9
+    #
+    #lr=0.001, momentum=0.9
+    #
+    #lr=0.005, momentum=0.9, weight_decay=1e-4
+    #
+    #lr=0.005, momentum=0.9, weight_decay=5e-4
+
+    optimizer = optim.SGD(model.parameters(), lr=1e-3, momentum=0.9, weight_decay=0)
+
+    #podemos testar esse outro otimizador, parece ser mais rapido e quem sabe forneca melhores resultados
+    # combinacoes a se testar (Adam):
+    # lr=1e-3
+    #
+    # lr=3e-4
+    #
+    # lr=1e-3, weight_decay=1e-4
+    #
+    # lr=3e-4, weight_decay=1e-4
+    #
+    # lr=1e-4
+
+    optimizer2 = optim.Adam(model.parameters(), lr=1e-3)
 
 
     # Training loop
