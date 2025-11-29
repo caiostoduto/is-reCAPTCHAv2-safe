@@ -280,14 +280,20 @@ def main():
     # Training loop
     print("Beggining training")
     with open(save_dir / "results.csv", 'w') as f:
-        f.write("epoch,loss\n")
-        print("epoch,loss")
+        f.write("epoch,loss,accuracy,lr\n")
 
         for epoch in range(epochs):
             running_loss = 0.0
-            for data in tqdm(train_loader, total=len(train_loader)):
+            correct = 0
+            total = 0
+
+            print(f"Epoch {epoch+1}/{epochs}")
+
+            pbar = tqdm(train_loader, desc='Training')
+            for data in pbar:
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data[0].to(device), data[1].to(device)
+
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
@@ -300,9 +306,16 @@ def main():
 
                 # print statistics
                 running_loss += loss.item()
+                _, predicted = outputs.max(1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
 
-            print(f"{epoch+1}/{epochs},{(running_loss / len(train_loader)):.4f}")
-            f.write(f"{epoch},{running_loss / len(train_loader)}\n")
+                pbar.set_postfix({
+                    'loss': f'{running_loss / len(pbar):.4f}',
+                    'acc': f'{100. * correct / total:.2f}%'
+                })
+
+            f.write(f"{epoch},{running_loss / len(train_loader)},{100. * correct / total:.2f},{optimizer.param_groups[0]['lr']:.6f}\n")
     
     torch.save(model.state_dict(), save_dir / "cnn.pth")
 
@@ -313,21 +326,66 @@ def main():
         correct = 0
         total = 0
         with torch.no_grad():
-            for data in tqdm(test_loader, total=len(test_loader)):
+            pbar = tqdm(test_loader, desc='Validation')
+            for data in pbar:
                 images, labels = data[0].to(device), data[1].to(device)
                 outputs = model(images)
+
+                # Get validation stats
+                loss = criterion(outputs, labels)
                 _, predicted = torch.max(outputs, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
                 
+                pbar.set_postfix({
+                    'loss': f'{running_loss / len(pbar):.4f}',
+                    'acc': f'{100. * correct / total:.2f}%'
+                })
+
                 all_preds.extend(predicted.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
         
         accuracy = correct / total
         f.write(f"Final accuracy: {(100*accuracy):.2f} %\n")
+        f.write(f"Final loss: {(running_loss / len(test_loader)):.2f} %\n")
         print(f"Final accuracy: {(100*accuracy):.2f} %")
+        print(f"Final loss: {(running_loss / len(test_loader)):.2f} %")
         
         cm = confusion_matrix(all_labels, all_preds)
+
+    
+    history = pd.read_csv(os.path.join(save_dir, "results.csv"))
+    # Plot training curves for this fold
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    # Plot loss
+    axes[0].plot(history['loss'], label='Train Loss', marker='o')
+    axes[0].set_xlabel('Epoch')
+    axes[0].set_ylabel('Loss')
+    axes[0].set_title(f'Training Loss')
+    axes[0].legend()
+    axes[0].grid(True)
+
+    # Plot accuracy
+    axes[1].plot(history['accuracy'], label='Top 1 Acc', marker='o')
+    axes[1].set_xlabel('Epoch')
+    axes[1].set_ylabel('Accuracy (%)')
+    axes[1].set_title(f'Training Accuracy')
+    axes[1].legend()
+    axes[1].grid(True)
+
+    # Plot learning rate
+    axes[2].plot(history['lr'], label='Learning Rate', marker='o', color='green')
+    axes[2].set_xlabel('Epoch')
+    axes[2].set_ylabel('Learning Rate')
+    axes[2].set_title(f'Learning Rate Schedule')
+    axes[2].set_yscale('log')
+    axes[2].legend()
+    axes[2].grid(True)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'training_plots.png'), dpi=300, bbox_inches='tight')
+
+    print(f"Training plots saved to: {os.path.join(save_dir, 'training_plots.png')}")
 
     # Plot Confusion Matrix
     cm = cm.T
