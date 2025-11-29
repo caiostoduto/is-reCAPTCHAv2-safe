@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 import os
 import pandas as pd
@@ -18,6 +19,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from sklearn.metrics import confusion_matrix
+
+import time
 
 # img_size pode dar melhor desempenho se for menor, tipo 64 ou 32
 def convert_imgfolder_to_hdf5(data_dir, output_path, img_size=128):
@@ -107,7 +110,12 @@ class SimpleCNN(nn.Module):
             nn.Linear(64*8*8, 256), nn.ReLU(),
             nn.Linear(256, num_classes)
         )
-    def forward(self, x): return self.net(x)
+
+    def forward(self, x):
+        return self.net(x)
+
+    def __str__(self):
+        return "Simple"
 
 class BetterCNN(nn.Module):
     def __init__(self, num_classes):
@@ -132,7 +140,12 @@ class BetterCNN(nn.Module):
         nn.Linear(128*16*16, 256), nn.ReLU(),
         nn.Linear(256, num_classes)
         )
-    def forward(self, x): return self.net(x)
+
+    def forward(self, x):
+        return self.net(x)
+        
+    def __str__(self):
+        return "Better"
 
 # testar BatchNorm2d + Dropout + AdaptiveAvgPool2d + Conv2d com stride=2 + menor feature map final
 class BetterImprovedCNN(nn.Module):
@@ -161,7 +174,12 @@ class BetterImprovedCNN(nn.Module):
         nn.Dropout(0.25),
         nn.Linear(256, num_classes)
     )
-    def forward(self, x): return self.net(x)
+        
+    def forward(self, x):
+        return self.net(x)
+        
+    def __str__(self):
+        return "Better Improved"
 
 def main():
     trans = [
@@ -208,6 +226,8 @@ def main():
         sucrilhos(CNN, trans[0], lrs[0], weights_decay[0], batch_sizes[i], j)
 
 def sucrilhos(CNN, transform, lr, weight_decay, batch_size, j):
+    start_time = time.time()
+
     # Dataset Loader
     base = Path(__file__).parent
     parquet_path = base / ".." / "datasets"
@@ -314,6 +334,14 @@ def sucrilhos(CNN, transform, lr, weight_decay, batch_size, j):
     torch.save(model.state_dict(), save_dir / "cnn.pth")
 
     with open(save_dir / "results.txt", 'w') as f:
+        f.write("Parameters:\n")
+        f.write(f"CNN: {CNN}\n")
+        f.write(f"Transform: {j % 12 if j % 12 < 3 else 1}\n")
+        f.write(f"Learning Rate: {lr}\n")
+        f.write(f"Weight Decay: {weight_decay}\n")
+        f.write(f"Batch Size: {batch_size}\n")
+        f.write(f"j: {j}\n")
+
         all_preds = []
         all_labels = []
         
@@ -344,7 +372,9 @@ def sucrilhos(CNN, transform, lr, weight_decay, batch_size, j):
         f.write(f"Final loss: {(running_loss / len(test_loader)):.2f} %\n")
         print(f"Final accuracy: {(100*accuracy):.2f} %")
         print(f"Final loss: {(running_loss / len(test_loader)):.2f} %")
+
         
+        f.write(f"Execution time: {time.time() - start_time}\n")
         cm = confusion_matrix(all_labels, all_preds)
 
     
@@ -368,13 +398,13 @@ def sucrilhos(CNN, transform, lr, weight_decay, batch_size, j):
     axes[1].grid(True)
 
     # Plot learning rate
-    axes[2].plot(history['lr'], label='Learning Rate', marker='o', color='green')
-    axes[2].set_xlabel('Epoch')
-    axes[2].set_ylabel('Learning Rate')
-    axes[2].set_title(f'Learning Rate Schedule')
-    axes[2].set_yscale('log')
-    axes[2].legend()
-    axes[2].grid(True)
+    # axes[2].plot(history['lr'], label='Learning Rate', marker='o', color='green')
+    # axes[2].set_xlabel('Epoch')
+    # axes[2].set_ylabel('Learning Rate')
+    # axes[2].set_title(f'Learning Rate Schedule')
+    # axes[2].set_yscale('log')
+    # axes[2].legend()
+    # axes[2].grid(True)
 
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'training_plots.png'), dpi=300, bbox_inches='tight')
