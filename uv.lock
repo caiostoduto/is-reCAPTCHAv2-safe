@@ -506,6 +506,8 @@ dependencies = [
     { name = "requests" },
     { name = "scikit-learn" },
     { name = "timm" },
+    { name = "torch" },
+    { name = "torchvision" },
     { name = "ultralytics" },
 ]
 
@@ -518,6 +520,8 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.5" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "timm", specifier = ">=1.0.22" },
+    { name = "torch", specifier = ">=2.9.1" },
+    { name = "torchvision", specifier = ">=0.24.1" },
     { name = "ultralytics", specifier = ">=8.3.228" },
 ]
 
