@@ -164,6 +164,50 @@ class BetterImprovedCNN(nn.Module):
     def forward(self, x): return self.net(x)
 
 def main():
+    trans = [
+      transforms.Compose([
+        transforms.RandomHorizontalFlip(p=0.3),
+        transforms.RandomRotation(degrees=5),
+        transforms.Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
+      ]),
+      transforms.Compose([
+        transforms.RandomRotation(degrees=10),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        transforms.RandomAffine(degrees=10, shear=10),
+        transforms.Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
+      ]),
+      transforms.Compose([
+        transforms.RandomAffine(degrees=10, shear=10),
+        transforms.ColorJitter(brightness=0.3, contrast=0.3),
+        transforms.RandomApply([transforms.GaussianBlur(kernel_size=3)], p=0.3),
+        transforms.Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
+      ])
+    ]
+
+    lrs = [0.01, 0.005, 0.001]
+    weights_decay=[0, 1e-4]
+    batch_sizes = [4, 16, 32, 64]
+
+    j = 0
+
+    for CNN in [SimpleCNN, BetterCNN, BetterImprovedCNN]:
+      for i in range(3):
+        j += 1
+        sucrilhos(CNN, trans[i], lrs[0], weights_decay[0], batch_sizes[0], j)
+
+      for i in range(3):
+        j += 1
+        sucrilhos(CNN, trans[0], lrs[i], weights_decay[0], batch_sizes[0], j)
+
+      for i in range(2):
+        j += 1
+        sucrilhos(CNN, trans[0], lrs[0], weights_decay[i], batch_sizes[0], j)
+
+      for i in range(4):
+        j += 1
+        sucrilhos(CNN, trans[0], lrs[0], weights_decay[0], batch_sizes[i], j)
+
+def sucrilhos(CNN, transform, lr, weight_decay, batch_size, j):
     # Dataset Loader
     base = Path(__file__).parent
     parquet_path = base / ".." / "datasets"
@@ -171,36 +215,11 @@ def main():
     df = pd.read_parquet(os.path.join(parquet_path, 'datasets_reduced.parquet'), engine='pyarrow')
     print(df['Label'].value_counts())
 
-    transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    #testar as transformations em 3 fases (combinadas, pode melhorar a robustez na detecao de padroes mais variados):
-    # Fase Básica:
-    # RandomHorizontalFlip(p=0.3)
-    # RandomRotation(degrees=5)
-    # Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
-
-    # Fase Intermediária:
-    # RandomRotation(degrees=10)
-    # ColorJitter(brightness=0.2, contrast=0.2)
-    # RandomAffine(degrees=10, shear=10)
-    # Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
-
-    # Fase Avançada (ideal para reCAPTCHA):
-    # RandomAffine(degrees=10, shear=10)
-    # ColorJitter(brightness=0.3, contrast=0.3)
-    # RandomApply([GaussianBlur(kernel_size=3)], p=0.3)
-    # Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
-
-
-    batch_size = 32
     num_workers = 4
     epochs = 100
 
     dataset_path = base / ".." / "dataset_fold0"
-    save_dir = base / "is_recaptchav2_safe" / "pytorch"
+    save_dir = base / "is_recaptchav2_safe" / "pytorch" / f"run_{j}"
     save_dir.mkdir(parents=True, exist_ok=True)
 
     train_h5 = dataset_path / "train.h5"
@@ -239,7 +258,7 @@ def main():
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
-    model = SimpleCNN(len(classes))
+    model = CNN(len(classes))
     model.to(device)
     # summary(model, input_size=(128, 3, 32, 32))   # optional
 
@@ -247,34 +266,9 @@ def main():
     print("Setting up loss & optimiser")
     criterion = nn.CrossEntropyLoss()
 
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay)
 
-    # combinacoes a se testar (SGD):
-
-    # lr=0.01, momentum=0.9
-    #
-    #lr=0.005, momentum=0.9
-    #
-    #lr=0.001, momentum=0.9
-    #
-    #lr=0.005, momentum=0.9, weight_decay=1e-4
-    #
-    #lr=0.005, momentum=0.9, weight_decay=5e-4
-
-    optimizer = optim.SGD(model.parameters(), lr=1e-3, momentum=0.9, weight_decay=0)
-
-    #podemos testar esse outro otimizador, parece ser mais rapido e quem sabe forneca melhores resultados
-    # combinacoes a se testar (Adam):
-    # lr=1e-3
-    #
-    # lr=3e-4
-    #
-    # lr=1e-3, weight_decay=1e-4
-    #
-    # lr=3e-4, weight_decay=1e-4
-    #
-    # lr=1e-4
-
-    optimizer2 = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer2 = optim.Adam(model.parameters(), lr=lr)
 
 
     # Training loop
