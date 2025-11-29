@@ -29,8 +29,6 @@ src/
 
 Requer Python 3.13.
 
-Requer CUDA e Pytorch devidamente instalados: https://pytorch.org/get-started/locally/
-
 ### Instalar as dependencias locais e configurar ambiente, escolha uma das duas opções abaixo:
 
 ```bash
