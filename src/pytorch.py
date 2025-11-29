@@ -134,6 +134,35 @@ class BetterCNN(nn.Module):
         )
     def forward(self, x): return self.net(x)
 
+# testar BatchNorm2d + Dropout + AdaptiveAvgPool2d + Conv2d com stride=2 + menor feature map final
+class BetterImprovedCNN(nn.Module):
+    def __init__(self, num_classes):
+        super().__init__()
+        self.net = nn.Sequential(
+
+        # BLOCO 1
+        nn.Conv2d(3, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+        nn.Conv2d(32, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+        nn.MaxPool2d(2),  # 128 → 64
+
+        # BLOCO 2
+        nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
+        nn.Conv2d(64, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
+        nn.MaxPool2d(2),  # 64 → 32
+
+        # BLOCO 3
+        nn.Conv2d(64, 128, 3, padding=1, stride=2), nn.BatchNorm2d(128), nn.ReLU(),
+        nn.Conv2d(128, 128, 3, padding=1), nn.BatchNorm2d(128), nn.ReLU(),
+
+        nn.AdaptiveAvgPool2d((4, 4)),
+
+        nn.Flatten(),
+        nn.Linear(128*4*4, 256), nn.ReLU(),
+        nn.Dropout(0.25),
+        nn.Linear(256, num_classes)
+    )
+    def forward(self, x): return self.net(x)
+
 def main():
     # Dataset Loader
     base = Path(__file__).parent
