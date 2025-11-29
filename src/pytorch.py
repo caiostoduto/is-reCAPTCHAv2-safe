@@ -109,7 +109,8 @@ class SimpleCNN(nn.Module):
 
 def main():
     # Dataset Loader
-    parquet_path = Path("../datasets")
+    base = Path(__file__).parent
+    parquet_path = base / ".." / "datasets"
 
     df = pd.read_parquet(os.path.join(parquet_path, 'datasets_reduced.parquet'), engine='pyarrow')
     print(df['Label'].value_counts())
@@ -124,14 +125,14 @@ def main():
     num_workers = 4
     epochs = 100
 
-    dataset_path = Path("../dataset_copy")
-    save_dir = Path("./is_recaptchav2_safe/pytorch")
+    dataset_path = base / ".." / "dataset_fold0"
+    save_dir = base / "is_recaptchav2_safe" / "pytorch"
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    train_h5 = "../datasets/train.h5"
-    val_h5 = "../datasets/val.h5"
+    train_h5 = dataset_path / "train.h5"
+    val_h5 = dataset_path / "val.h5"
 
-    if not (os.path.exists(train_h5) and os.path.exists(val_h5)):
+    if not (train_h5.exists() and val_h5.exists()):
         print("HDF5 files not found. Creating them...")
         convert_imgfolder_to_hdf5(dataset_path / "train", train_h5)
         convert_imgfolder_to_hdf5(dataset_path / "val", val_h5)
@@ -139,8 +140,8 @@ def main():
         print("HDF5 files found. Skipping creation.")
 
 
-    train_set = HDF5Dataset("../datasets/train.h5", transform=transform)
-    test_set = HDF5Dataset("../datasets/val.h5", transform=transform)
+    train_set = HDF5Dataset(train_h5, transform=transform)
+    test_set = HDF5Dataset(val_h5, transform=transform)
 
     train_loader = DataLoader(
         train_set,
