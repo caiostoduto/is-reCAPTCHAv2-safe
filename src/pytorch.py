@@ -208,10 +208,10 @@ def main():
 
     j = 0
 
-    for CNN in [SimpleCNN, BetterCNN, BetterImprovedCNN]:
+    for CNN in [SimpleCNN, BetterImprovedCNN]:
       for i in range(3):
         j += 1
-        sucrilhos(CNN, trans[i], lrs[0], weights_decay[0], batch_sizes[0], j)
+        sucrilhos(CNN, trans[i], lrs[2], weights_decay[0], batch_sizes[0], j)
 
       for i in range(3):
         j += 1
@@ -219,11 +219,11 @@ def main():
 
       for i in range(2):
         j += 1
-        sucrilhos(CNN, trans[0], lrs[0], weights_decay[i], batch_sizes[0], j)
+        sucrilhos(CNN, trans[0], lrs[2], weights_decay[i], batch_sizes[0], j)
 
       for i in range(4):
         j += 1
-        sucrilhos(CNN, trans[0], lrs[0], weights_decay[0], batch_sizes[i], j)
+        sucrilhos(CNN, trans[0], lrs[2], weights_decay[0], batch_sizes[i], j)
 
 def sucrilhos(CNN, transform, lr, weight_decay, batch_size, j):
     start_time = time.time()
@@ -370,17 +370,16 @@ def sucrilhos(CNN, transform, lr, weight_decay, batch_size, j):
         accuracy = correct / total
         f.write(f"Final accuracy: {(100*accuracy):.2f} %\n")
         f.write(f"Final loss: {(running_loss / len(test_loader)):.2f} %\n")
+        f.write(f"Execution time: {time.time() - start_time}\n")
         print(f"Final accuracy: {(100*accuracy):.2f} %")
         print(f"Final loss: {(running_loss / len(test_loader)):.2f} %")
 
-        
-        f.write(f"Execution time: {time.time() - start_time}\n")
         cm = confusion_matrix(all_labels, all_preds)
 
     
     history = pd.read_csv(os.path.join(save_dir, "results.csv"))
     # Plot training curves for this fold
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     # Plot loss
     axes[0].plot(history['loss'], label='Train Loss', marker='o')
     axes[0].set_xlabel('Epoch')
