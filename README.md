@@ -1,78 +1,91 @@
-# is-reCAPTCHAv2-safe
+# Is reCAPTCHAv2 Safe?
 
-Classificação de imagens de desafios do Google reCAPTCHA v2 para estudo de segurança (ex.: "Traffic Light", "Bus", etc.). O foco é criar um pipeline reproduzível: coleta de múltiplas fontes públicas → unificação → conversão pra HDFa5 → treinamento e avaliação de modelos simples (CNN) e testes com arquiteturas mais avançadas (timm / YOLO).
+Este projeto investiga a segurança do reCAPTCHAv2 através do treinamento de modelos de classificação de imagens (CNN e YOLO) para resolver desafios de imagem do reCAPTCHA.
 
-> Aviso: "reCAPTCHA" é marca registrada do Google. Este repositório usa apenas dados publicamente distribuídos já disponíveis em outros locais para fins de pesquisa. Verifique licenças/termos antes de redistribuir.
+## Requisitos
 
-## Sumário
+- Python 3.13+
+- GPU com suporte CUDA (opcional, mas recomendado)
+- Pelo menos 8GB de RAM
 
-1. Estrutura do Repositório
-2. Instalação
-3. Treinamento (CNN Simples)
-4. Modelos Avançados (timm / YOLO)
+## Instalação
 
-## 1. Estrutura do Repositório
-
-```
-pyproject.toml        Configuração e dependências (Python >= 3.13)
-datasets/             Arquivos baixados + parquet + HDF5 (gerados)
-src/
-	utils/
-		dataset_download.py  Download dos datasets
-		load_datasets.py     Consolidação, normalização de rótulos, deduplicação
-	pytorch.py             Rede neural convolucional simples (CNN)
-	timm.ipynb             Notebook para arquiteturas timm
-	yolo.ipynb             Notebook para testes com YOLO (ultralytics)
+1. Clone o repositório:
+```bash
+git clone https://github.com/caiostoduto/is-reCAPTCHAv2-safe.git
+cd is-reCAPTCHAv2-safe
 ```
 
-## 2. Instalação
-
-Requer Python 3.13.
-
-### Instalar as dependencias locais e configurar ambiente, escolha uma das duas opções abaixo:
-
+2. Instale as dependências:
 ```bash
 uv sync
 ```
 
-(**opção recomendada**, porém precisa baixar o gerenciador de pacotes [uv](https://docs.astral.sh/uv/getting-started/installation/) )
+As dependências incluem:
+- PyTorch e Torchvision
+- Ultralytics (YOLO)
+- H5py para armazenamento eficiente de dados
+- Scikit-learn para métricas
+- Pandas e NumPy para manipulação de dados
 
-ou
+## 📁 Estrutura de Dados
 
-```bash
-pip install -e .
+O projeto utiliza uma estrutura de dados com validação cruzada (k-fold):
+
+```
+dataset_fold{0-4}/
+├── labels.txt          # Arquivo com labels e splits
+├── train.h5           # Dataset de treino em HDF5 (CNN)
+├── val.h5             # Dataset de validação em HDF5 (CNN)
+├── train/             # Diretório de treino (YOLO)
+│   ├── Bicycle/
+│   ├── Bridge/
+│   ├── Bus/
+│   └── ...
+└── val/               # Diretório de validação (YOLO)
+    ├── Bicycle/
+    ├── Bridge/
+    └── ...
 ```
 
-(pode ser necessário configurar manualmente o ambiente virtual e a versão correta do python)
+## Modelo 1: CNN (PyTorch)
 
-## 3. Treinamento (CNN Simples)
+### Arquiteturas Disponíveis
 
-Antes de rodar o script, garanta que o diretório ./datasets/ esteja configurado corretamente. Se ele ainda não existir ou estiver vazio, execute as seis primeiras células do notebook yolo.ipynb para que a estrutura e os arquivos do dataset sejam criados.
+O código oferece três arquiteturas CNN:
 
-Script: `src/pytorch.py`.
+1. **SimpleCNN**: Modelo básico com 2 blocos convolucionais
+2. **BetterCNN**: Modelo melhorado com 3 blocos convolucionais
+3. **BetterImprovedCNN**: Modelo avançado com BatchNorm, Dropout e AdaptiveAvgPool
 
-Rodar:
+### Como Executar
 
 ```bash
-python src/pytorch.py
+cd src
+python pytorch.py
 ```
 
-Saídas em `./is_recaptchav2_safe/pytorch/`:
+## Modelo 2: YOLO (Ultralytics)
 
-- `results.csv` (loss por epoch)
-- `results.txt` (accuracy final)
-- `confusion_matrix.png` e `confusion_matrix_normalized.png`
+### Modelos Disponíveis
 
-Transformações aplicadas no loader: `RandomHorizontalFlip` + `Normalize`. Não há `ToTensor` porque imagens já estão em tensor dentro do HDF5.
+O projeto suporta os seguintes modelos de classificação YOLO:
 
-Seleção de dispositivo automática: CUDA → MPS → CPU.
+**YOLOv8**:
+- `yolov8n-cls.pt` (Nano)
+- `yolov8s-cls.pt` (Small)
+- `yolov8m-cls.pt` (Medium)
+- `yolov8l-cls.pt` (Large)
+- `yolov8x-cls.pt` (Extra Large)
 
-## 4. Experimentos Avançados
+**YOLO11**:
+- `yolo11n-cls.pt` (Nano)
+- `yolo11s-cls.pt` (Small)
+- `yolo11m-cls.pt` (Medium)
+- `yolo11l-cls.pt` (Large)
+- `yolo11x-cls.pt` (Extra Large)
 
-### timm
+### Como Executar
 
-Usar `timm.ipynb` para testar arquiteturas (ex. `resnet50`, `efficientnet_v2_s`).
-
-### YOLO (ultralytics)
-
-Notebook `yolo.ipynb` pode explorar se as classes mapeadas servem para fine-tuning de detecção (exige anotação bounding box que não existe hoje — requer etapa adicional se for perseguido).
+1. Abra o Jupyter Notebook
+2. Execute as células em ordem
