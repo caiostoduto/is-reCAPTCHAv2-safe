@@ -211,21 +211,21 @@ def main():
     for CNN in [SimpleCNN, BetterImprovedCNN]:
       for i in range(3):
         j += 1
-        sucrilhos(CNN, trans[i], lrs[2], weights_decay[0], batch_sizes[0], j)
+        train_cnn(CNN, trans[i], lrs[2], weights_decay[0], batch_sizes[0], j)
 
       for i in range(3):
         j += 1
-        sucrilhos(CNN, trans[0], lrs[i], weights_decay[0], batch_sizes[0], j)
+        train_cnn(CNN, trans[0], lrs[i], weights_decay[0], batch_sizes[0], j)
 
       for i in range(2):
         j += 1
-        sucrilhos(CNN, trans[0], lrs[2], weights_decay[i], batch_sizes[0], j)
+        train_cnn(CNN, trans[0], lrs[2], weights_decay[i], batch_sizes[0], j)
 
       for i in range(4):
         j += 1
-        sucrilhos(CNN, trans[0], lrs[2], weights_decay[0], batch_sizes[i], j)
+        train_cnn(CNN, trans[0], lrs[2], weights_decay[0], batch_sizes[i], j)
 
-def sucrilhos(CNN, transform, lr, weight_decay, batch_size, j):
+def train_cnn(CNN, transform, lr, weight_decay, batch_size, j):
     start_time = time.time()
 
     # Dataset Loader

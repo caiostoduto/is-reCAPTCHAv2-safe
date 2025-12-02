@@ -89,3 +89,6 @@ O projeto suporta os seguintes modelos de classificação YOLO:
 
 1. Abra o Jupyter Notebook
 2. Execute as células em ordem
+
+É possível testar os modelos treinados no Google Colab:
+<https://colab.research.google.com/drive/1wqS-FyvIli-cfks-cQqtvsxJj_L3hhMb>
